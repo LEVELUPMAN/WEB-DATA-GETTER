@@ -1,0 +1,828 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Googleスプレッドシートで使えるスクレイピングシステム｜Webページ情報取得パッケージ</title>
+<meta name="description" content="URLを入力するだけで、Webページのタイトル・H1見出し・メタディスクリプションをGoogleスプレッドシートへ取得・整理できるGASパッケージです。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F9FC;
+  --surface:#FFFFFF;
+  --ink:#132539;
+  --muted:#5B7590;
+  --accent:#1D5FB8;
+  --accent-soft:#E7F0FC;
+  --line:#D9E4F1;
+  --warn:#8A6D3B;
+  --hero-title:#132539;
+  --font-serif:'Zen Old Mincho', serif;
+  --font-sans:'Noto Sans JP', sans-serif;
+  --font-mono:'JetBrains Mono', monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1826; --surface:#132133; --ink:#E9F0F9; --muted:#8FA6C0;
+    --accent:#5B9CF0; --accent-soft:#1B2C42; --line:#26384E; --warn:#D8B778;
+    --hero-title:#FFFFFF; --hero-desc:#AEE0FF; --hero-price:#FFFFFF;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1826; --surface:#132133; --ink:#E9F0F9; --muted:#8FA6C0;
+  --accent:#5B9CF0; --accent-soft:#1B2C42; --line:#26384E; --warn:#D8B778;
+  --hero-title:#FFFFFF; --hero-desc:#AEE0FF; --hero-price:#FFFFFF;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-sans);
+  line-height:1.85; font-size:16px; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:760px; margin:0 auto; padding:0 24px;}
+section{padding:64px 0; border-bottom:1px solid var(--line);}
+h1,h2,h3{font-family:var(--font-serif); font-weight:700; line-height:1.5; margin:0 0 20px;}
+h2{font-size:1.5rem; letter-spacing:.02em;}
+h3{font-size:1.15rem; color:var(--accent);}
+p{margin:0 0 16px; color:var(--ink);}
+.lead{color:var(--muted);}
+ul{margin:0 0 16px; padding-left:1.3em;}
+li{margin-bottom:8px;}
+.note{color:var(--muted); font-size:.92rem;}
+.mono{font-family:var(--font-mono);}
+
+/* Hero */
+.hero{padding:96px 0 48px; border-bottom:1px solid var(--line); opacity:0; transform:translateY(14px); animation:rise .7s ease-out forwards;}
+@keyframes rise{to{opacity:1; transform:none;}}
+.hero-wrap{max-width:1200px; margin:0 auto; padding:0 24px; display:grid; grid-template-columns:minmax(0,1fr); gap:36px;}
+.hero-left{min-width:0;}
+.hero-right{display:flex; flex-direction:column; min-width:0;}
+@media (min-width:1150px){
+  .hero-wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:start; gap:48px;}
+}
+.eyebrow{font-family:var(--font-mono); font-size:.8rem; color:var(--accent); margin-bottom:10px;}
+.product-name{
+  --pn-from:#F26B0F; --pn-to:#FFA928;
+  font-family:'M PLUS Rounded 1c',var(--font-sans); font-weight:900; line-height:1.05; white-space:nowrap;
+  font-size:clamp(1.4rem, calc((100vw - 36px) / 14), 2.4rem);
+  letter-spacing:.03em; margin:0 0 16px; padding-bottom:14px; position:relative;
+  display:flex; align-items:center; gap:.3em;
+  filter:drop-shadow(0 4px 14px rgba(242,107,15,.30));
+}
+.pn-icon{width:1.05em; height:1.05em; flex:none;}
+.pn-text{
+  color:var(--pn-from);
+  background:linear-gradient(90deg,var(--pn-from),var(--pn-to)); -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.product-name::after{content:""; position:absolute; left:0; bottom:0; width:110px; height:6px; border-radius:3px; background:linear-gradient(90deg,var(--pn-from),var(--pn-to));}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .product-name{--pn-from:#FF8A2A; --pn-to:#FFC15E; filter:drop-shadow(0 4px 18px rgba(255,138,42,.45));}
+}
+:root[data-theme="dark"] .product-name{--pn-from:#FF8A2A; --pn-to:#FFC15E; filter:drop-shadow(0 4px 18px rgba(255,138,42,.45));}
+@media (min-width:1150px){ .product-name{font-size:clamp(2rem, calc((100vw - 144px) / 2 / 14), 2.8rem);} }
+.hero h1{
+  font-family:var(--font-sans); font-weight:900; font-size:1.95rem; line-height:1.3;
+  color:var(--hero-title); letter-spacing:-.012em; margin-bottom:10px;
+}
+@media (min-width:1150px){
+  .hero h1{font-size:1.5rem; line-height:1.32; letter-spacing:-.016em;}
+}
+@media (min-width:1220px){
+  .hero h1{font-size:1.6rem;}
+}
+.hero-badge-small{
+  display:inline-block; font-family:var(--font-mono); font-size:.74rem; font-weight:700;
+  color:var(--accent); background:var(--surface); border:1px solid var(--line);
+  padding:4px 11px; border-radius:100px; margin-bottom:12px;
+}
+.hero .sub{font-size:1.02rem; font-weight:600; color:var(--hero-desc, var(--ink)); margin-bottom:14px;}
+.hero .note{color:var(--hero-desc, var(--muted));}
+.hero .price-line .lbl, .hero .price-line .tax,
+.final .price-line .lbl, .final .price-line .tax{color:var(--hero-price, var(--muted));}
+.hero .price-line .yen, .hero .price-line .amt,
+.final .price-line .yen, .final .price-line .amt{color:var(--hero-price, var(--accent));}
+
+.bonus-box{
+  border:1px solid var(--accent); background:var(--accent-soft); border-radius:10px;
+  padding:13px 16px; margin-bottom:14px;
+}
+.bonus-box-eyebrow{font-family:var(--font-mono); font-size:.76rem; font-weight:800; color:var(--accent); margin-bottom:4px;}
+.bonus-box-title{font-family:var(--font-sans); font-weight:900; font-size:1.08rem; color:var(--ink); margin-bottom:5px;}
+.bonus-box-feature{font-size:.88rem; color:var(--ink); font-weight:600; margin-bottom:3px; line-height:1.45;}
+.bonus-box-sub{font-size:.8rem; color:var(--muted);}
+
+.sheet{
+  border:1px solid var(--line); border-radius:4px; overflow:hidden; background:var(--surface); margin-bottom:0;
+}
+.sheet-row{display:grid; grid-template-columns:1.7fr 1.5fr 1.7fr .9fr 1fr; font-family:var(--font-mono); font-size:.78rem;}
+.sheet-row > div{padding:10px 10px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.sheet-row > div:last-child{border-right:none;}
+.sheet-row.head{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+.sheet-row:last-child > div{border-bottom:none;}
+.sheet-row .ok{color:var(--accent); font-weight:600;}
+.sheet-row .ng{color:var(--warn); font-weight:600;}
+
+.pillbox{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;}
+.pill{border:1px solid var(--line); border-radius:100px; padding:6px 14px; font-size:.85rem; color:var(--muted); background:var(--surface);}
+
+.price-line{display:flex; align-items:baseline; gap:8px; margin-bottom:12px;}
+.price-line .lbl{font-size:.9rem; color:var(--muted);}
+.price-line .amt{font-family:var(--font-mono); font-weight:700; font-size:2.1rem; color:var(--accent); line-height:1;}
+.price-line .yen{font-family:var(--font-mono); font-weight:700; font-size:1.05rem; color:var(--accent);}
+.price-line .tax{font-size:.85rem; color:var(--muted);}
+
+.price-compare{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;}
+.price-was{font-family:var(--font-mono); font-size:1.2rem; font-weight:700; color:#E0732A;}
+.price-was s{text-decoration:line-through; text-decoration-thickness:2.5px; text-decoration-color:#E0272A;}
+.price-badge{font-family:var(--font-mono); font-weight:800; font-size:.82rem; color:#fff; background:#E0272A; padding:6px 14px; border-radius:100px; white-space:nowrap; box-shadow:0 6px 14px -6px rgba(224,39,42,.55);}
+
+.cta{
+  display:inline-block; background:var(--accent); color:var(--surface); text-decoration:none;
+  font-weight:700; padding:12px 26px; border-radius:4px; font-size:.98rem; transition:opacity .15s;
+}
+.cta:hover{opacity:.85;}
+.cta:focus-visible{outline:2px solid var(--accent); outline-offset:3px;}
+.cta-row{margin-top:6px;}
+
+/* Table */
+.tbl{width:100%; border-collapse:collapse; font-size:.92rem; margin-bottom:16px;}
+.tbl th,.tbl td{border:1px solid var(--line); padding:10px 12px; text-align:left; vertical-align:top;}
+.tbl th{background:var(--accent-soft); color:var(--accent); font-family:var(--font-mono); font-weight:600; font-size:.85rem;}
+.tbl td.col{font-family:var(--font-mono); font-size:.85rem; color:var(--accent); white-space:nowrap;}
+
+/* Steps */
+.steps{list-style:none; padding:0; counter-reset:step;}
+.steps li{counter-increment:step; display:flex; gap:16px; margin-bottom:20px; align-items:baseline;}
+.steps li::before{
+  content:counter(step); font-family:var(--font-mono); font-weight:600; color:var(--accent);
+  border:1px solid var(--accent); border-radius:100px; width:26px; height:26px; flex:none;
+  display:flex; align-items:center; justify-content:center; font-size:.82rem;
+}
+
+.usecase{border-left:2px solid var(--accent-soft); padding-left:18px; margin-bottom:24px;}
+.usecase:last-child{margin-bottom:0;}
+
+.caution{background:var(--accent-soft); border-radius:4px; padding:20px 22px; margin-top:8px;}
+.caution p{color:var(--muted); margin-bottom:0; font-size:.92rem;}
+.caution p + p{margin-top:8px;}
+
+details{border:1px solid var(--line); border-radius:4px; padding:14px 18px; margin-bottom:10px; background:var(--surface);}
+summary{cursor:pointer; font-weight:600; font-family:var(--font-serif);}
+details p{margin-top:10px; margin-bottom:0; color:var(--muted);}
+
+.final{text-align:left; padding-bottom:96px;}
+.final .cta{font-size:1.05rem;}
+.final .price-line{margin-bottom:10px;}
+.price-note{font-family:var(--font-mono); font-size:.85rem; color:var(--muted); margin-top:14px;}
+
+.backtop{
+  position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom,0px));
+  width:44px; height:44px; border-radius:100px; background:var(--accent); color:var(--surface);
+  display:flex; align-items:center; justify-content:center; text-decoration:none; font-size:1.1rem;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.backtop.show{opacity:.92; pointer-events:auto;}
+
+.buybar{
+  position:fixed; top:calc(14px + env(safe-area-inset-top,0px)); right:16px; z-index:30;
+  display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--line);
+  border-radius:100px; padding:6px 8px 6px 16px; box-shadow:0 10px 24px -14px rgba(19,37,57,.3);
+}
+.buybar .amt{font-family:var(--font-mono); font-weight:700; font-size:.9rem; color:var(--ink); white-space:nowrap;}
+.buybar-price{display:flex; flex-direction:column; align-items:flex-end; line-height:1.25; margin-right:2px;}
+.buybar-was{font-family:var(--font-mono); font-size:.82rem; font-weight:700; color:#E0732A; text-decoration:line-through; text-decoration-color:#E0272A; text-decoration-thickness:2px;}
+.buybar-badge{font-family:var(--font-mono); font-weight:800; font-size:.6rem; color:#fff; background:#E0272A; padding:2px 7px; border-radius:100px; margin-bottom:2px; white-space:nowrap;}
+.buybar .cta{padding:9px 16px; font-size:.85rem; white-space:nowrap;}
+@media (max-width:520px){
+  .buybar{padding:5px 6px 5px 12px;}
+  .buybar .amt{font-size:.78rem;}
+  .buybar-was{font-size:.72rem;}
+  .buybar-badge{font-size:.56rem; padding:2px 6px;}
+  .buybar .cta{padding:8px 12px; font-size:.78rem;}
+}
+
+@media (max-width:600px){
+  .wrap{padding:0 18px;}
+  section{padding:48px 0;}
+  .sheet-row{grid-template-columns:1fr; font-size:.78rem;}
+  .sheet-row > div{border-right:none;}
+}
+
+/* Animated spreadsheet demo */
+.demo-slot-label{font-family:var(--font-mono); font-size:.72rem; font-weight:700; color:var(--accent); margin-bottom:6px;}
+.demo-plus{text-align:center; font-family:var(--font-mono); font-weight:800; font-size:1rem; color:var(--accent); margin:6px 0;}
+.demo-sheet{position:relative; box-shadow:0 12px 34px -28px rgba(19,37,57,.65); margin-bottom:0;}
+.demo-toolbar{display:flex;align-items:center;gap:7px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--surface);font-size:.72rem;}
+.demo-dot{width:7px;height:7px;border-radius:50%;background:#34a853;box-shadow:0 0 0 3px rgba(52,168,83,.12);}
+.demo-title{font-weight:700;color:var(--ink);}
+.demo-status{margin-left:auto;color:var(--muted);font-family:var(--font-mono);}
+.demo-status.busy{color:var(--accent);}
+.sheet-scroll{overflow-x:auto;scrollbar-width:thin;}
+.sheet-row.demo-grid{grid-template-columns:148px 150px 118px 128px 112px 78px 108px;min-width:842px;}
+.sheet-row.demo-grid > div{padding:6px 8px;}
+.demo-data > div, .demo-data-g > div{min-height:28px;}
+.demo-data .url-cell.typing, .demo-data-g .url-cell.typing{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent);}
+.demo-data .url-cell.typing::after, .demo-data-g .url-cell.typing::after{content:"";display:inline-block;width:1px;height:1em;margin-left:2px;vertical-align:-2px;background:var(--accent);animation:blink .7s steps(1) infinite;}
+.demo-data .filled, .demo-data-g .filled{animation:cellIn .28s ease-out both;}
+.demo-data .success, .demo-data-g .success{color:#188038;font-weight:700;}
+@keyframes blink{50%{opacity:0}}
+@keyframes cellIn{from{background:var(--accent-soft);opacity:.2}to{background:transparent;opacity:1}}
+
+/* Share buttons */
+.share-box{margin-top:28px;padding-top:20px;border-top:1px solid var(--line);}
+.share-label{font-size:.86rem;color:var(--muted);margin-bottom:10px;}
+.share-buttons{display:flex;flex-wrap:wrap;gap:8px;}
+.share-btn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-decoration:none;border-radius:100px;padding:8px 13px;font:600 .82rem var(--font-sans);cursor:pointer;transition:transform .15s,background .15s,border-color .15s;}
+.share-btn:hover{transform:translateY(-1px);background:var(--accent-soft);border-color:var(--accent);}
+.share-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.share-copy-state{font-size:.78rem;color:var(--accent);min-height:1.2em;margin-top:8px;}
+
+/* Sub-CTA sections (customize request / newsletter) */
+.subcta{background:var(--surface);}
+.subcta .wrap{max-width:620px;}
+.subcta h2{font-size:1.2rem;}
+.subcta p{color:var(--muted); font-size:.94rem;}
+.btn-outline{
+  display:inline-block; border:1.5px solid var(--accent); color:var(--accent); background:transparent;
+  text-decoration:none; font-weight:700; padding:11px 24px; border-radius:4px; font-size:.92rem;
+  transition:background .15s, color .15s;
+}
+.btn-outline:hover{background:var(--accent-soft);}
+.btn-outline:focus-visible{outline:2px solid var(--accent); outline-offset:3px;}
+
+@media (max-width:600px){
+  .sheet-row.demo-grid{grid-template-columns:150px 135px 110px 120px 115px 80px 110px;font-size:.7rem;}
+  .sheet-row.demo-grid > div{border-right:1px solid var(--line);}
+  .share-buttons{gap:6px;}
+  .hero-wrap{padding:0 18px;}
+}
+@media (prefers-reduced-motion: reduce){
+  .demo-data .url-cell.typing::after,.demo-data .filled,
+  .demo-data-g .url-cell.typing::after,.demo-data-g .filled{animation:none;}
+  .share-btn{transition:none;}
+}
+
+</style>
+</head>
+<body>
+
+<div class="buybar">
+  <div class="buybar-price">
+    <span class="buybar-badge">50%OFF</span>
+    <span class="buybar-was">¥2,200</span>
+    <span class="amt">¥1,100（税込）</span>
+  </div>
+  <a class="cta" href="https://buy.stripe.com/fZu5kD7Q248nb923WG8Ra00">購入する</a>
+</div>
+
+<header class="hero">
+  <div class="hero-wrap">
+    <div class="hero-left">
+      <div class="product-name"><svg class="pn-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><defs><linearGradient id="pnGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--pn-from)"/><stop offset="1" style="stop-color:var(--pn-to)"/></linearGradient></defs><ellipse cx="24" cy="10" rx="16" ry="6" fill="url(#pnGrad)"/><path d="M8 10v9c0 3.3 7.2 6 16 6s16-2.7 16-6v-9c0 3.3-7.2 6-16 6S8 13.3 8 10z" fill="url(#pnGrad)" opacity=".85"/><path d="M8 21v9c0 3.3 7.2 6 16 6s16-2.7 16-6v-9c0 3.3-7.2 6-16 6S8 24.3 8 21z" fill="url(#pnGrad)" opacity=".7"/><path d="M8 32v6c0 3.3 7.2 6 16 6s16-2.7 16-6v-6c0 3.3-7.2 6-16 6S8 35.3 8 32z" fill="url(#pnGrad)" opacity=".55"/></svg><span class="pn-text">WEB DATA GETTER</span></div>
+      <div class="eyebrow">Webページ情報取得パッケージ / Version 1.0</div>
+      <h1>Googleスプレッドシートで使える<br>Webページ情報取得・スクレイピングシステム</h1>
+      <span class="hero-badge-small">GASソースコード一式付き・買い切り</span>
+      <p class="sub">URLを入力するだけで、<br>Webページの情報を自動取得・一覧表示</p>
+
+      <div class="bonus-box">
+        <div class="bonus-box-eyebrow">🎁 発売記念購入特典</div>
+        <div class="bonus-box-title">WebページAI分析 Gemini版</div>
+        <div class="bonus-box-feature">AI本文要約　＋　電話番号・メールアドレス有無を自動判定</div>
+        <div class="bonus-box-sub">Googleスプレッドシートへ自動記録</div>
+      </div>
+
+      <div class="price-compare">
+        <span class="price-was">通常価格 <s>¥2,200</s>（税込）</span>
+        <span class="price-badge">発売記念 50%OFF</span>
+      </div>
+      <div class="price-line">
+        <span class="lbl">買い切り</span>
+        <span class="yen">¥</span><span class="amt">1,100</span>
+        <span class="tax">（税込）</span>
+      </div>
+
+      <div class="cta-row"><a class="cta" href="https://buy.stripe.com/fZu5kD7Q248nb923WG8Ra00">今すぐ購入する（¥1,100）</a></div>
+
+      <p class="note" style="margin-top:14px;">ページタイトル・H1見出し・メタディスクリプションなどを、Googleスプレッドシートにまとめて整理。対象は一般公開され、Google Apps Scriptから取得できるHTMLページです。初回はコードの貼り付け・設定・Googleの権限承認が必要です。すべてのWebページでの取得を保証するものではありません。</p>
+
+      <div class="pillbox">
+        <span class="pill">Googleスプレッドシートで操作</span>
+        <span class="pill">GASソース6ファイル + 導入マニュアル同梱</span>
+        <span class="pill">情報取得用の外部API契約は不要</span>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <div class="demo-slot-label">本体：Webページ情報取得</div>
+      <div class="sheet demo-sheet" id="sheetDemo" aria-label="Webページ情報取得の自動入力デモ">
+        <div class="demo-toolbar">
+          <span class="demo-dot"></span>
+          <span class="demo-title">Webページ情報</span>
+          <span class="demo-status" id="demoStatus">待機中</span>
+        </div>
+        <div class="sheet-scroll">
+          <div class="sheet-row demo-grid head">
+            <div>URL</div><div>ページタイトル</div><div>H1見出し</div><div>メタディスクリプション</div><div>取得日時</div><div>取得結果</div><div>エラー内容</div>
+          </div>
+          <div class="sheet-row demo-grid demo-data" data-row="0"><div class="url-cell"></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+          <div class="sheet-row demo-grid demo-data" data-row="1"><div class="url-cell"></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+          <div class="sheet-row demo-grid demo-data" data-row="2"><div class="url-cell"></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+          <div class="sheet-row demo-grid demo-data" data-row="3"><div class="url-cell"></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+        </div>
+      </div>
+
+      <div class="demo-plus">＋</div>
+
+      <div class="demo-slot-label">🎁 購入特典：WebページAI分析 Gemini版</div>
+      <div class="sheet demo-sheet" id="sheetDemoGemini" aria-label="WebページAI分析 Gemini版の自動入力デモ">
+        <div class="demo-toolbar">
+          <span class="demo-dot"></span>
+          <span class="demo-title">WebページAI分析</span>
+          <span class="demo-status" id="demoStatusGemini">待機中</span>
+        </div>
+        <div class="sheet-scroll">
+          <div class="sheet-row demo-grid head">
+            <div>URL</div><div>AI要約</div><div>電話番号あり</div><div>メールアドレスあり</div><div>取得日時</div><div>取得結果</div><div>エラー内容</div>
+          </div>
+          <div class="sheet-row demo-grid demo-data-g" data-row="0"><div class="url-cell"></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+          <div class="sheet-row demo-grid demo-data-g" data-row="1"><div class="url-cell"></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+          <div class="sheet-row demo-grid demo-data-g" data-row="2"><div class="url-cell"></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+          <div class="sheet-row demo-grid demo-data-g" data-row="3"><div class="url-cell"></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="bonus">
+  <div class="wrap">
+    <div class="eyebrow">🎁 発売記念購入特典</div>
+    <h2>WebページAI分析 Gemini版</h2>
+    <p>URLを入力すると、Webページを取得・解析し、以下をGoogleスプレッドシートへ自動記録する、本体Version 1.0とは独立して動作する追加のGoogleスプレッドシート＋GASシステムです。本体に機能を追加したものではなく、別のGoogleスプレッドシートで単独利用します。</p>
+    <ul>
+      <li>Webページ本文をGemini AIで日本語要約</li>
+      <li>電話番号の有無を○／×で自動判定</li>
+      <li>メールアドレスの有無を○／×で自動判定</li>
+      <li>取得日時・取得結果・エラー内容を記録</li>
+    </ul>
+    <p class="note">電話番号・メールアドレスの有無判定はAIではなく、GAS側の処理で行います。</p>
+
+    <table class="tbl">
+      <tr><th>列</th><th>項目</th><th>内容</th></tr>
+      <tr><td class="col">A</td><td>URL</td><td>ご自身で入力するページのアドレス</td></tr>
+      <tr><td class="col">B</td><td>AI要約</td><td>Webページ本文のGeminiによる日本語要約</td></tr>
+      <tr><td class="col">C</td><td>電話番号あり</td><td>○または×</td></tr>
+      <tr><td class="col">D</td><td>メールアドレスあり</td><td>○または×</td></tr>
+      <tr><td class="col">E</td><td>取得日時</td><td>各URLの成功または失敗が確定した時刻</td></tr>
+      <tr><td class="col">F</td><td>取得結果</td><td>成功または失敗</td></tr>
+      <tr><td class="col">G</td><td>エラー内容</td><td>取得できなかった理由</td></tr>
+    </table>
+
+    <div class="caution">
+      <p>新規Googleスプレッドシートへの設置、Apps Scriptへの設置、Gemini APIキー設定、Gemini APIとの実通信、Webページ本文のAI要約、電話番号・メールアドレスの○／×判定、取得日時・取得結果の記録、複数URLの処理について、開発者による動作確認を行っています。実際に複数の公開Webページで、AI要約および各判定がGoogleスプレッドシートへ正常に記録されることを確認しています。</p>
+      <p>ただし、すべてのWebページ・すべての環境での動作を保証するものではありません。</p>
+    </div>
+
+    <h3>本体Version 1.0との違い</h3>
+    <p>本体Version 1.0は従来どおり、情報取得用の外部API契約は不要です。購入特典「WebページAI分析 Gemini版」のみ、利用にあたってGemini APIキーをご自身で取得・設定していただく必要があります。Gemini APIには無料枠がありますが、利用条件・上限・料金体系はGoogle側の提供条件に従います。</p>
+
+    <p>特典には「Gemini版 簡易設置ガイド付き」として、GASの設置・Gemini APIキーの取得と設定・初回権限承認・URL入力・実行方法がわかる簡易ガイドを同梱します。</p>
+
+    <p class="note">ご自身での設置が難しい場合は、設置・初期設定代行も別途有料で承ります。価格は別途ご案内します。</p>
+  </div>
+</section>
+
+<section id="dekiru">
+  <div class="wrap">
+    <h2>URL一覧はある、その先の情報整理を進めたい方へ</h2>
+    <ul>
+      <li>管理するページのタイトルや見出しを表にまとめたい</li>
+      <li>説明文がどのように設定されているか、URLごとに見比べたい</li>
+      <li>確認した日時と、取得できなかったページも残しておきたい</li>
+    </ul>
+    <p class="lead">このパッケージは、手元にあるURL一覧からページの基本情報を取り出し、スプレッドシートで扱える形に整えます。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>どんな商品ですか</h2>
+    <p>GoogleスプレッドシートとGoogle Apps Script（GAS）で動く、Webページ情報取得・スクレイピング用のソースコードパッケージです。</p>
+    <p>専用シート「Webページ情報」のA列へURLを入力すると、メニュー操作で公開ページの情報を取得します。同じ行のB〜G列に結果が入るので、URLと取得した内容を対応させて確認できます。</p>
+    <p class="note">URLの検索・サイト内の自動巡回・AIによる評価や文章生成は、本体Version 1.0には含まれません。発売記念購入特典「WebページAI分析 Gemini版」では、AI要約・電話番号有無判定・メールアドレス有無判定を利用できます。本体Version 1.0は、取得した情報を確認・整理するための基本機能をまとめています。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Version 1.0でできること</h2>
+    <ul>
+      <li>複数のURLを上から順に処理</li>
+      <li>ページタイトル・最初のH1見出し・メタディスクリプションを取得</li>
+      <li>各URLの取得日時と成功・失敗を記録</li>
+      <li>取得に失敗した場合は可能な範囲で理由を記録</li>
+      <li>同じURL一覧を再取得して同じ行へ上書き</li>
+      <li>URLを残して取得結果をまとめてクリア</li>
+    </ul>
+    <p class="note">1件のURL取得に失敗しても後続を処理します。ただし、結果を書き込めない場合や時間・権限などの制限では処理が止まることがあります。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>取得項目</h2>
+    <table class="tbl">
+      <tr><th>列</th><th>項目</th><th>内容</th></tr>
+      <tr><td class="col">A</td><td>URL</td><td>ご自身で入力するページのアドレス</td></tr>
+      <tr><td class="col">B</td><td>ページタイトル</td><td>HTML内の最初のtitle</td></tr>
+      <tr><td class="col">C</td><td>H1見出し</td><td>HTML内の最初のh1</td></tr>
+      <tr><td class="col">D</td><td>メタディスクリプション</td><td>HTMLに設定されたページ説明文</td></tr>
+      <tr><td class="col">E</td><td>取得日時</td><td>各URLの成功または失敗が確定した時刻</td></tr>
+      <tr><td class="col">F</td><td>取得結果</td><td>成功または失敗</td></tr>
+      <tr><td class="col">G</td><td>エラー内容</td><td>HTTPステータス・URL形式・通信例外など</td></tr>
+    </table>
+    <p class="note">ページに該当項目が存在しない場合は空欄になります。「成功」は3項目すべての取得や、内容の正確性を保証する表示ではありません。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>利用イメージ</h2>
+    <div class="usecase">
+      <h3>自社サイトのページを整理する</h3>
+      <p>手元のURL一覧からタイトルやH1を取得し、ページごとの表記を見比べる作業に使えます。</p>
+    </div>
+    <div class="usecase">
+      <h3>ページ説明文の記載状況を確認する</h3>
+      <p>メタディスクリプションを一覧で確認できます。空欄は未設定以外の理由でも発生するため、必要に応じて元ページを確認します。SEOの点数付けや検索順位の改善保証はありません。</p>
+    </div>
+    <div class="usecase">
+      <h3>公開ページの調査メモを作る</h3>
+      <p>取引先や参考ページなど、すでに用意したURLの基本情報を整理できます。取得結果の横、H列以降にご自身のメモを記入できます。取得先の利用条件に従ってご利用ください。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>導入後の操作は3ステップ</h2>
+    <ol class="steps">
+      <li>「Webページ情報」のA2以降へURLを1行1件で入力</li>
+      <li>「Webページ情報取得」→「情報を取得」を選択</li>
+      <li>B〜G列の情報・日時・結果を確認</li>
+    </ol>
+    <p class="note">初回のみ「初期設定」で対象シートとヘッダーを準備します。通常の取得操作でコードを書く必要はありません。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>初回導入について</h2>
+    <p>新しいGoogleスプレッドシートからApps Scriptを開き、同梱の6つのコードと設定ファイルを貼り付けます。保存後にシートを再読み込みし、「初期設定」とGoogleの権限承認を行います。</p>
+    <p>購入者向けマニュアルはブラウザーでの導入手順を説明しています。この手順ではNode.js・npm・claspのインストールやコマンド入力を使いません。Webアプリの公開やデプロイも不要です。</p>
+    <p class="note">必要なものは、PCのブラウザー・インターネット接続・Googleアカウント・スプレッドシートの編集権限です。組織の管理設定によって導入や実行が制限される場合があります。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>こんな方に向いています</h2>
+    <ul>
+      <li>Googleスプレッドシートを使っている方</li>
+      <li>すでに調べたいURLを持っている方</li>
+      <li>ページのタイトル・見出し・説明文を一覧で見たい方</li>
+      <li>手順書に沿ったコードの貼り付けと権限承認を行える方</li>
+      <li>少量ずつ取得して結果を確認する使い方を想定している方</li>
+    </ul>
+    <p class="note">検索から収集までの全自動化、大量高速取得、ログイン後の画面操作を目的とする商品ではありません。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>お届けする内容</h2>
+    <ul>
+      <li>GASソースコード 6ファイル</li>
+      <li>設定ファイル appsscript.json</li>
+      <li>導入マニュアル.pdf</li>
+      <li>利用規約.pdf</li>
+    </ul>
+    <h3>【発売記念購入特典】</h3>
+    <ul>
+      <li>WebページAI分析 Gemini版 GAS</li>
+      <li>Gemini版 簡易設置ガイド</li>
+    </ul>
+    <p class="note">開発用のnpm設定・clasp設定・自動テスト一式は、この購入者向け配布版には含みません。ソースの利用・改変・再配布などの条件は、同梱の利用規約をご確認ください。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>対応範囲をご確認ください</h2>
+    <p>一般公開され、Google Apps ScriptのUrlFetchAppから取得できるHTMLページを対象とします。</p>
+    <p>次のページは正常取得を保証しません。</p>
+    <ul>
+      <li>ログイン必須ページ</li>
+      <li>JavaScript実行後に情報が生成されるページ</li>
+      <li>強いBot対策のあるページ</li>
+      <li>Google検索結果</li>
+      <li>Google Maps</li>
+      <li>Iタウンページ</li>
+      <li>PDF</li>
+      <li>画像のみのページ</li>
+    </ul>
+    <p class="note">PDF・画像・JSONなど、HTML以外の形式が明示された応答は失敗として記録します。画面に見えている内容と、取得できるHTMLの内容が一致しない場合があります。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>確認状況</h2>
+    <div class="caution">
+      <p>既存のGoogleスプレッドシート環境で、正常取得1件・失敗0件が確認されたとの開発者報告があります。ページタイトル・H1見出し・メタディスクリプション・取得日時・取得結果の入力を確認しています。</p>
+      <p>この結果は、全サイト・全機能・すべての導入環境での動作保証を意味しません。今回整えたブラウザー導入手順については、新規環境での一連の実機確認が販売前の確認事項です。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>よくある質問</h2>
+    <details><summary>URLも自動で探してくれますか</summary><p>URLはご自身で用意します。検索やサイト内の自動巡回は行いません。</p></details>
+    <details><summary>外部APIの契約は必要ですか</summary><p>本体Version 1.0は、情報取得用の外部API契約やAIサービスへの登録は不要です。Googleの標準サービスを使用し、Googleの利用条件と上限が適用されます。発売記念購入特典「WebページAI分析 Gemini版」のみ、利用にあたってGemini APIキーをご自身で取得・設定していただく必要があります。</p></details>
+    <details><summary>成功なのに空欄があるのはなぜですか</summary><p>元のHTMLに項目がない場合や、取得・解析の対象外の表現では空欄になることがあります。「成功」は3項目が全部そろったことを表すものではありません。</p></details>
+    <details><summary>一度に何件まで処理できますか</summary><p>固定の件数は保証していません。Googleの上限と取得先の応答時間に左右されるため、まず少数からお試しください。</p></details>
+    <details><summary>途中で止まったら続きから再開しますか</summary><p>自動再開はありません。再実行は2行目からです。未処理のURLはマニュアルに沿って別途少量ずつ処理します。</p></details>
+    <details><summary>前回の結果は残りますか</summary><p>再取得は同じ行へ上書きします。必要な履歴は、事前に別タブへコピーしてください。</p></details>
+    <details><summary>定期実行やメールアドレス抽出はできますか</summary><p>本体Version 1.0には含まれません。発売記念購入特典「WebページAI分析 Gemini版」では、AI要約・電話番号有無判定・メールアドレス有無判定を利用できます（メールアドレスそのものの抽出ではなく、有無の○／×判定です）。定期実行・問い合わせページ検出・Playwright・データベース・ユーザー管理・課金機能は、本体・購入特典のいずれにも含みません。本体Version 1.0は従来どおり外部の情報取得API連携は不要です。</p></details>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>購入前にご確認ください</h2>
+    <ul>
+      <li>初回にコードと設定の貼り付け、Googleの権限承認が必要です</li>
+      <li>あらゆるWebページで取得できる商品ではありません</li>
+      <li>Googleや取得先サイトの仕様変更・制限によって動作が変わる場合があります</li>
+      <li>再取得は上書き、結果クリアは確認ダイアログなしの一括消去です</li>
+      <li>大量・高速・無制限の取得や固定の処理件数は保証しません</li>
+      <li>サイトの利用条件に従い、取得結果はご自身で確認してください</li>
+    </ul>
+    <p class="note">詳細は上記をご確認ください。</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>利用規約</h2>
+    <h3>利用について</h3>
+    <p>本商品は購入者本人向けの商品です。プログラム・マニュアルの第三者への譲渡、転売、無断での配布・公開は禁止しています。</p>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>手元のURL一覧から、ページ情報の整理を始める</h2>
+    <p class="lead">対応範囲・導入手順・購入前の注意事項をご確認のうえ、お申し込みください。</p>
+    <div class="price-compare">
+      <span class="price-was">通常価格 <s>¥2,200</s>（税込）</span>
+      <span class="price-badge">発売記念 50%OFF</span>
+    </div>
+    <div class="price-line">
+      <span class="lbl">買い切り</span>
+      <span class="yen">¥</span><span class="amt">1,100</span>
+      <span class="tax">（税込）</span>
+    </div>
+    <a class="cta" href="https://buy.stripe.com/fZu5kD7Q248nb923WG8Ra00">今すぐ導入する</a>
+    <div class="share-box" aria-label="SNSシェア">
+      <div class="share-label">この商品をシェア</div>
+      <div class="share-buttons">
+        <a class="share-btn" id="shareX" href="#" target="_blank" rel="noopener noreferrer">𝕏</a>
+        <a class="share-btn" id="shareFacebook" href="#" target="_blank" rel="noopener noreferrer">Facebook</a>
+        <a class="share-btn" id="shareLine" href="#" target="_blank" rel="noopener noreferrer">LINE</a>
+        <button class="share-btn" id="shareCopy" type="button">🔗 URLをコピー</button>
+      </div>
+      <div class="share-copy-state" id="shareCopyState" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section class="subcta">
+  <div class="wrap">
+    <h2>このシステムをカスタマイズしたい方へ</h2>
+    <p>取得項目の追加、AI機能の追加、業務に合わせた機能変更など、システムのカスタマイズも承っています。購入したシステムをベースに、「こんな機能を追加したい」「自社の業務に合わせて変更したい」といったご相談も可能です。</p>
+    
+    <a class="btn-outline" href="https://docs.google.com/forms/d/e/1FAIpQLSe_kv5gOtTZpsfhmdzbX6y9sqsFFYIQHsuHiL5TPoYirOrF5w/viewform" target="_blank" rel="noopener noreferrer">カスタマイズを相談する</a>
+  </div>
+</section>
+
+<section class="subcta">
+  <div class="wrap">
+    <h2>新商品・追加機能のお知らせ</h2>
+    <p>新しいGASツール、AI自動化システム、新商品、アップデート・追加機能などの情報をメールでお知らせします。</p>
+    
+    <a class="btn-outline" href="https://docs.google.com/forms/d/1pldcaHHCXSwtbpSQKd0d17qmbn7mIZ5n8UFBHSB6uZc/viewform" target="_blank" rel="noopener noreferrer">最新情報メールに登録する</a>
+  </div>
+</section>
+
+<a href="#top" class="backtop" id="backtop" aria-label="ページ上部へ戻る">↑</a>
+
+<script>
+(function(){
+  /* Back to top */
+  var btn = document.getElementById('backtop');
+  window.addEventListener('scroll', function(){
+    if(window.scrollY > 500){ btn.classList.add('show'); } else { btn.classList.remove('show'); }
+  });
+
+  /* Animated spreadsheet demo */
+  var demoRows = [
+    ['https://sample-office.example/','サンプルオフィス','業務をもっとシンプルに','業務改善を支援するサンプルページです。','2026/09/30 00:48:12','成功',''],
+    ['https://blue-lab.example/','Blue Lab','Web制作と自動化','Web制作と業務自動化のデモサイトです。','2026/09/30 00:48:14','成功',''],
+    ['https://green-shop.example/','Green Shop','暮らしに小さな便利を','便利な商品を紹介するサンプルショップです。','2026/09/30 00:48:16','成功',''],
+    ['https://next-service.example/','Next Service','次の仕事を効率化','日々の作業を効率化するサンプルサービスです。','2026/09/30 00:48:18','成功','']
+  ];
+  var rowEls = Array.prototype.slice.call(document.querySelectorAll('.demo-data'));
+  var statusEl = document.getElementById('demoStatus');
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var sleep = function(ms){ return new Promise(function(resolve){ setTimeout(resolve, reduceMotion ? Math.min(ms, 80) : ms); }); };
+
+  function clearDemo(){
+    rowEls.forEach(function(row){
+      Array.prototype.forEach.call(row.children, function(cell){
+        cell.textContent = '';
+        cell.className = cell === row.children[0] ? 'url-cell' : '';
+      });
+    });
+    statusEl.textContent = '待機中';
+    statusEl.classList.remove('busy');
+  }
+
+  async function typeText(cell, text){
+    cell.classList.add('typing');
+    if(reduceMotion){
+      cell.textContent = text;
+    }else{
+      for(var i=0;i<text.length;i++){
+        cell.textContent += text.charAt(i);
+        await sleep(28 + Math.random()*22);
+      }
+    }
+    cell.classList.remove('typing');
+  }
+
+  async function fillRow(index){
+    var cells = rowEls[index].children;
+    statusEl.textContent = 'URL入力中';
+    statusEl.classList.add('busy');
+    await typeText(cells[0], demoRows[index][0]);
+    await sleep(350);
+    statusEl.textContent = '情報を取得中…';
+    await sleep(650);
+
+    for(var c=1;c<demoRows[index].length;c++){
+      cells[c].textContent = demoRows[index][c];
+      cells[c].classList.add('filled');
+      if(c === 5) cells[c].classList.add('success');
+      await sleep(115);
+    }
+    statusEl.textContent = '取得成功';
+    statusEl.classList.remove('busy');
+    await sleep(520);
+  }
+
+  async function runDemo(){
+    while(true){
+      clearDemo();
+      await sleep(500);
+      for(var i=0;i<demoRows.length;i++) await fillRow(i);
+      statusEl.textContent = '4件の取得が完了';
+      await sleep(2600);
+    }
+  }
+  runDemo();
+
+  /* Gemini bonus demo (purchase bonus, independent sheet) */
+  var geminiRows = [
+    ['https://sample-shop.example.com/','季節のおすすめ商品と店舗情報を紹介するオンラインショップです。','○','×','2026/09/30 00:50:02','成功',''],
+    ['https://info-desk.example.org/','サービス内容と問い合わせ窓口のご案内を掲載しています。','×','○','2026/09/30 00:50:05','成功',''],
+    ['https://blog-garden.example.net/','日々のガーデニングのコツを紹介するブログです。','×','×','2026/09/30 00:50:08','成功',''],
+    ['https://community-hub.example.org/','地域イベントの告知と参加申込みを受け付けるページです。','○','○','2026/09/30 00:50:11','成功','']
+  ];
+  var rowElsG = Array.prototype.slice.call(document.querySelectorAll('.demo-data-g'));
+  var statusElG = document.getElementById('demoStatusGemini');
+
+  function clearDemoG(){
+    rowElsG.forEach(function(row){
+      Array.prototype.forEach.call(row.children, function(cell){
+        cell.textContent = '';
+        cell.className = cell === row.children[0] ? 'url-cell' : '';
+      });
+    });
+    if(statusElG){ statusElG.textContent = '待機中'; statusElG.classList.remove('busy'); }
+  }
+
+  async function fillRowG(index){
+    var cells = rowElsG[index].children;
+    if(statusElG){ statusElG.textContent = 'URL入力中'; statusElG.classList.add('busy'); }
+    await typeText(cells[0], geminiRows[index][0]);
+    await sleep(350);
+    if(statusElG){ statusElG.textContent = 'AI分析中…'; }
+    await sleep(650);
+
+    for(var c=1;c<geminiRows[index].length;c++){
+      cells[c].textContent = geminiRows[index][c];
+      cells[c].classList.add('filled');
+      if(c === 5) cells[c].classList.add('success');
+      await sleep(115);
+    }
+    if(statusElG){ statusElG.textContent = '取得成功'; statusElG.classList.remove('busy'); }
+    await sleep(520);
+  }
+
+  async function runDemoG(){
+    if(!rowElsG.length) return;
+    while(true){
+      clearDemoG();
+      await sleep(500);
+      for(var i=0;i<geminiRows.length;i++) await fillRowG(i);
+      if(statusElG) statusElG.textContent = geminiRows.length + '件のAI分析が完了';
+      await sleep(2600);
+    }
+  }
+  runDemoG();
+
+  /* SNS share buttons */
+  var shareXEl = document.getElementById('shareX');
+  var shareFacebookEl = document.getElementById('shareFacebook');
+  var shareLineEl = document.getElementById('shareLine');
+  var copyBtn = document.getElementById('shareCopy');
+  var copyState = document.getElementById('shareCopyState');
+
+  var pageUrl = window.location.href.split('#')[0];
+  var shareTitle = document.title;
+  var isLocalFile = window.location.protocol === 'file:';
+
+  function flashMessage(msg){
+    if(!copyState) return;
+    copyState.textContent = msg;
+    setTimeout(function(){ copyState.textContent = ''; }, 3000);
+  }
+
+  if(isLocalFile){
+    /* file:// で開いている場合、正しい共有URLを生成できないため
+       不正なリンクを開かせず、案内のみ表示する */
+    [shareXEl, shareFacebookEl, shareLineEl].forEach(function(el){
+      if(!el) return;
+      el.href = '#';
+      el.setAttribute('aria-disabled', 'true');
+      el.addEventListener('click', function(e){
+        e.preventDefault();
+        flashMessage('このページをインターネット上（https）に公開すると共有できます');
+      });
+    });
+    if(copyBtn){
+      copyBtn.addEventListener('click', function(){
+        flashMessage('このページをインターネット上（https）に公開するとURLをコピーできます');
+      });
+    }
+  }else{
+    shareXEl.href =
+      'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareTitle) + '&url=' + encodeURIComponent(pageUrl);
+    shareFacebookEl.href =
+      'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(pageUrl);
+    shareLineEl.href =
+      'https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(pageUrl);
+
+    copyBtn.addEventListener('click', async function(){
+      try{
+        await navigator.clipboard.writeText(pageUrl);
+        flashMessage('URLをコピーしました');
+      }catch(e){
+        var temp = document.createElement('textarea');
+        temp.value = pageUrl;
+        temp.style.position = 'fixed';
+        temp.style.opacity = '0';
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        temp.remove();
+        flashMessage('URLをコピーしました');
+      }
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
+
+</body></html>
